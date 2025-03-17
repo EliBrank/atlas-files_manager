@@ -5,26 +5,17 @@ class RedisClient {
     this.client = createClient();
     this.connected = false;
 
-    this.client.on('error', error => {
+    this.client.on('error', (error) => {
       console.log('Redis Client Error', error);
     });
 
     this.client.on('ready', () => {
       this.connected = true;
-      console.log('redis connected successfully');
     });
   }
 
   isAlive() {
     return this.connected;
-  }
-
-  async connect() {
-      try {
-          await this.client.connect();
-      } catch (error) {
-          console.error('Failed to connect to Redis:', error);
-      }
   }
 
   async get(key) {
