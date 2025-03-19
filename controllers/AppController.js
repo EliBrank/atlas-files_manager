@@ -20,12 +20,12 @@ class AppController {
 
     static async getStats(req, res) {
         try {
-            const user = await dbClient.nbUsers();
-            const files = await dbClient.nbFiles();
+            // const user = await dbClient.nbUsers();
+            // const files = await dbClient.nbFiles();
 
             res.status(200).json({
-                users: user,
-                files: files,
+                users: await DBClient.nbUsers(),
+                files: await DBClient.nbFiles(),
             });
         } catch (error) {
             res.status(500).json({

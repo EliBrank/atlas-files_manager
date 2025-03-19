@@ -11,7 +11,7 @@ class DBClient {
 
     // set default for connected status
     this.connected = false;
-    this.client = new MongoClient(url);
+    this.client = new MongoClient(url, { useUnifiedTopology: true });
 
     this.client.connect()
       .then(() => {
