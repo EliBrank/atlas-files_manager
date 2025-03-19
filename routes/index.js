@@ -1,10 +1,10 @@
 import express from "express";
-import AppController from './controller/AppController';
+import AppController from "../controllers/AppController.js";
 
-const router = express.Router();
+const routes = express.Router();
 
-router.get('/status', AppController.getStatus);
+routes.get('/status', AppController.getStatus);
 
-router.get('/stats', AppController.getStats);
+routes.get('/stats', AppController.getStats);
 
-module.exports = router;
+export default routes;
