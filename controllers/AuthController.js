@@ -58,8 +58,13 @@ class AuthController {
             if (!token) {
                 return res.status(401).json({
                     error: 'Unauthorized'
-                })
+                });
             }
+            const key = `auth_${token}`;
+            await redisClient.del(key)
+
+            // send() provides empty HTTP response body
+            return res.status(204).send();
         } catch (error) {
             return res.status(500).json({
                 error: 'Internal server error'
