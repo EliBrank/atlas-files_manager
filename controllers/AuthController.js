@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import redisClient from '../utils/redis.js';
 import dbClient from '../utils/db.js';
+import hash from 'sha1';
 
 class AuthController {
     static async getConnect(req, res) {
@@ -8,8 +9,8 @@ class AuthController {
             const authHeader = req.headers.authorization;
             // auth header should follow pattern of something like 'Basic 5xkIQ=...'
             if (!authHeader || !authHeader.startsWith('Basic')) {
-                res.status(401).json({
-                    error: "Internal server error"
+                return res.status(401).json({
+                    error: 'Unauthorized'
                 });
             }
             // extract just the base64 part
@@ -19,18 +20,49 @@ class AuthController {
             // extract email, password from credentials (<email>:<password>)
             const [email, password] = credentials.split(':');
 
-            // TODO get check that user is in DB
+            const user = await dbClient.db.collection('users').findOne({ email: email });
 
-            const passwordHash = crypto.createHash('sha1')
-                // pass in password to hashing process (not yet converted)
-                .update(password)
-                // actually process staged data as hexidecimal string
-                .digest('hex');
+            // const passwordHash = crypto.createHash('sha1')
+            //     // pass in password to hashing process (not yet converted)
+            //     .update(password)
+            //     // actually process staged data as hexidecimal string
+            //     .digest('hex');
 
-            const token = `auth_${uuidv4()}`;
+            // using sha1 instead of crypto module for consistency
+            if (!user || hash(password) !== user.password) {
+                return res.status(401).json({
+                    error: 'Unauthorized'
+                });
+            }
+
+            const token = uuidv4();
+            const key = `auth_${token}`;
+
+            // _id field is generated automatically when users inserted into db
+            // duration set is 24hrs (calculated in seconds)
+            await redisClient.set(key, user._id.toString(), (24 * 60 * 60))
+
+            return res.status(200).json({
+                'token': token
+            });
         } catch (error) {
-            res.status(500).json({
-                error: "Internal server error"
+            return res.status(500).json({
+                error: 'Internal server error'
+            });
+        }
+    }
+
+    static async getDisconnect(req, res) {
+        try {
+            const token = req.headers['x-token'];
+            if (!token) {
+                return res.status(401).json({
+                    error: 'Unauthorized'
+                })
+            }
+        } catch (error) {
+            return res.status(500).json({
+                error: 'Internal server error'
             });
         }
     }
