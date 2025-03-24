@@ -12,6 +12,6 @@ routes.get('/connect', AuthController.getConnect)
 routes.get('/disconnect', AuthController.getDisconnect)
 
 routes.post('/users', UsersController.postNew);
-// routes.get('/users/me', UsersController.getMe);
+routes.get('/users/me', UsersController.getMe);
 
 export default routes;
