@@ -16,7 +16,7 @@ export default class UsersController {
 
             const existingUser = await dbClient.db.collection('users').findOne({ email: email});
             if (existingUser) return res.status(400).json({ error: "Already exsists"});
-            
+
             const hashPassword = hash(password);
 
             // More curious for my self (Taylor Green) to make sure the hashing was working
