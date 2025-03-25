@@ -5,6 +5,8 @@ import pkg from 'mongodb';
 
 const { ObjectId } = pkg;
 
+const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager'
+
 export default class FilesController {
     static async postUpload(req, res) {
         const token = req.headers['x-token'];
@@ -70,11 +72,25 @@ export default class FilesController {
             }
         }
 
-        if (type === "image" || type === "file"){
-            try {
+        if (type === 'folder') {
+            const newFolder = {
+                userId: ObjectId(userId),
+                name,
+                type,
+                isPublic,
+                parentId: parentId !== 0 ? ObjectId(parentId) : 0
+            };
 
-            }
+            const result = await dbClient.db.collection('files').insertOne(newFolder);
+
+            return res.status(201).json({
+                id: result.insertedId,
+                userId,
+                name,
+                type,
+                isPublic,
+                parentId
+            })
         }
-
     }
 }
