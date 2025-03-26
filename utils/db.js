@@ -1,5 +1,5 @@
 import pkg from 'mongodb';
-import redisClient from './redis';
+import redisClient from './redis.js';
 const { MongoClient, ObjectId } = pkg;
 
 class DBClient {
@@ -92,6 +92,19 @@ class DBClient {
             return new ObjectId(id);
         } catch (error) {
             console.error(`Error getting ObjectId: ${error}`);
+            return 0;
+        }
+    }
+
+    async getFileById(fileId, userId) {
+        if (!this.isAlive() || !fileId || !userId) return 0;
+        try {
+            return await this.db.collection('files').findOne({
+                _id: this.getObjectId(fileId),
+                userId: this.getObjectId(userId),
+            });
+        } catch (error) {
+            console.error(`Error getting file from DB: ${error}`);
             return 0;
         }
     }
