@@ -81,7 +81,7 @@ export default class FilesController {
                 name,
                 type,
                 isPublic,
-                parentId: parentId !== 0 ? ObjectId(parentId) : 0 // if parentId is not set to one then set it as the ObjectId of the parent otherwise set to 0 (root)
+                parentId: parentId !== 0 ? ObjectId(parentId) : 0 // if parentId is not 0, then cast it as an ObjectId, otherwise keep it set as 0 (root)
             };
 
             // adds the new folder to the collection files
