@@ -1,4 +1,6 @@
 node_modules/
 main.js
 image.png
+image.webp
 .main_image_upload.py
+image_upload.py
