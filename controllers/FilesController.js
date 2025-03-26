@@ -1,4 +1,3 @@
-import redisClient from "../utils/redis.js";
 import dbClient from "../utils/db.js";
 import { v4 as uuidv4 } from "uuid";
 import fs from 'fs';
@@ -137,12 +136,23 @@ export default class FilesController {
     }
 
     static async getShow(req, res) {
-        const user = await dbClient.authenticateUser(req.headers['x-token']);
-
+        const token = req.headers['x-token'];
+        const user = await dbClient.authenticateUser(token);
         if (!user) {
-            return res.status(401).json({ error: 'Unathorized' });
+            return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        const fileId =
+        // req.params gets route parameters from request (i.e. { id: 50f3... } in this case)
+        const fileId = req.params.id;
+        if (!fileId) {
+            return res.status(404).json({ error: 'Not found' });
+        }
+
+        const file = await dbClient.getFileById(fileId, user._id.toString());
+        if (!file) {
+            return res.status(404).json({ error: 'Not found' });
+        }
+
+        return res.status(200).json(file);
     }
 }
