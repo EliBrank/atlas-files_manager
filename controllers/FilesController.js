@@ -2,6 +2,8 @@ import redisClient from "../utils/redis.js";
 import dbClient from "../utils/db.js";
 import { v4 as uuidv4 } from "uuid";
 import pkg from 'mongodb';
+import fs from 'fs';
+import path from 'path';
 
 const { ObjectId } = pkg;
 
@@ -72,25 +74,71 @@ export default class FilesController {
             }
         }
 
+        // If type is folder it saves as a new folder.
         if (type === 'folder') {
             const newFolder = {
                 userId: ObjectId(userId),
                 name,
                 type,
                 isPublic,
-                parentId: parentId !== 0 ? ObjectId(parentId) : 0
+                parentId: parentId !== 0 ? ObjectId(parentId) : 0 // if parentId is not set to one then set it as the ObjectId of the parent otherwise set to 0 (root)
             };
 
+            // adds the new folder to the collection files
             const result = await dbClient.db.collection('files').insertOne(newFolder);
 
+            // if successful should return status 201 with a json of info
             return res.status(201).json({
-                id: result.insertedId,
-                userId,
-                name,
-                type,
-                isPublic,
-                parentId
-            })
+                id: result.insertedId, // Id is set to whatever Mongo gives it
+                userId, // user is of who made the folder
+                name, // whatever the name you give it is
+                type, // the type of what is being stored (in this case a folder)
+                isPublic, // whether the file is accessible to the public or not
+                parentId // if there is a parentId display here if the parent is root then should show a 0
+            });
         }
+
+        // gives each file a unique name when storing to the disk
+        const fileName = uuidv4();
+
+        // creates the path to the files
+        let localPath = path.join(folderPath, fileName);
+
+        // if type is and image or file store to the database and to disk
+        if (type === 'image' || type === 'file') {
+            if (!fs.existsSync(folderPath)) {
+                fs.mkdirSync(folderPath, { recursive: true });
+            }
+
+            try {
+                const fileData = Buffer.from(data, 'base64');
+                fs.writeFileSync(localPath, fileData);
+            } catch (error) {
+                return res.status(500).json({ error: 'Error saving file' });
+            }
+        } else {
+            let localPath = null;
+        }
+
+        const newFile = {
+            userId: ObjectId(userId),
+            name,
+            type,
+            isPublic,
+            parentId: parentId !== 0 ? ObjectId(parentId) : 0,
+            localPath
+        };
+
+        const result = await dbClient.db.collection('files').insertOne(newFile);
+
+        return res.status(201).json({
+            id: result.insertedId,
+            userId,
+            name,
+            type,
+            isPublic,
+            parentId,
+            localPath
+        });
     }
 }
