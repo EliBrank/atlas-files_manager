@@ -85,6 +85,16 @@ class DBClient {
             return 0;
         }
     }
+
+    async getObjectId(id) {
+        if (!this.isAlive()) return 0;
+        try {
+            return new ObjectId(id);
+        } catch (error) {
+            console.error(`Error getting ObjectId: ${error}`);
+            return 0;
+        }
+    }
 }
 
 const dbClient = new DBClient;
