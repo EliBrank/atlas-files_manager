@@ -157,7 +157,6 @@ export default class FilesController {
     }
 
     static async getIndex(req, res) {
-        console.log('hello test');
         const token = req.headers['x-token'];
         const user = await dbClient.authenticateUser(token);
         if (!user) {
