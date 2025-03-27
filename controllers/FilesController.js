@@ -1,26 +1,16 @@
-import redisClient from "../utils/redis.js";
 import dbClient from "../utils/db.js";
 import { v4 as uuidv4 } from "uuid";
-import pkg from 'mongodb';
 import fs from 'fs';
 import path from 'path';
-
-const { ObjectId } = pkg;
 
 const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager'
 
 export default class FilesController {
     static async postUpload(req, res) {
         const token = req.headers['x-token'];
-
-        const userId = await redisClient.get(`auth_${token}`);
-        if (!userId) {
-            return res.status(401).json({ error: ' Unathorized' });
-        }
-
-        const user = await dbClient.db.collection('users').findOne({ _id: ObjectId(userId) });
+        const user = await dbClient.authenticateUser(token);
         if (!user) {
-            return res.status(401).json({ error: 'Unathorized' });
+            return res.status(401).json({ error: 'Unauthorized' });
         }
 
         const {
@@ -57,7 +47,9 @@ export default class FilesController {
 
         // checks if parentId is set
         if (parentId !== 0) {
-            const parentFile = await dbClient.db.collection('files').findOne({ _id: ObjectId(parentId) });
+            const parentFile = await dbClient.db.collection('files').findOne({
+                _id: dbClient.getObjectId(parentId)
+            });
 
             // if we can not find the parent file
             if (!parentFile) {
@@ -77,11 +69,12 @@ export default class FilesController {
         // If type is folder it saves as a new folder.
         if (type === 'folder') {
             const newFolder = {
-                userId: ObjectId(userId),
+                userId: user._id,
                 name,
                 type,
                 isPublic,
-                parentId: parentId !== 0 ? ObjectId(parentId) : 0 // if parentId is not set to one then set it as the ObjectId of the parent otherwise set to 0 (root)
+                // if parentId is not 0, then cast it as an ObjectId, otherwise keep it set as 0 (root)
+                parentId: parentId !== 0 ? dbClient.getObjectId(parentId) : 0
             };
 
             // adds the new folder to the collection files
@@ -90,7 +83,7 @@ export default class FilesController {
             // if successful should return status 201 with a json of info
             return res.status(201).json({
                 id: result.insertedId, // Id is set to whatever Mongo gives it
-                userId, // user is of who made the folder
+                userId: user._id.toString(), // user is of who made the folder
                 name, // whatever the name you give it is
                 type, // the type of what is being stored (in this case a folder)
                 isPublic, // whether the file is accessible to the public or not
@@ -121,11 +114,11 @@ export default class FilesController {
         }
 
         const newFile = {
-            userId: ObjectId(userId),
+            userId: user._id,
             name,
             type,
             isPublic,
-            parentId: parentId !== 0 ? ObjectId(parentId) : 0,
+            parentId: parentId !== 0 ? dbClient.getObjectId(parentId) : 0,
             localPath
         };
 
@@ -133,12 +126,68 @@ export default class FilesController {
 
         return res.status(201).json({
             id: result.insertedId,
-            userId,
+            userId: user._id.toString(),
             name,
             type,
             isPublic,
             parentId,
             localPath
         });
+    }
+
+    static async getShow(req, res) {
+        const token = req.headers['x-token'];
+        const user = await dbClient.authenticateUser(token);
+        if (!user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // req.params gets route parameters from request (i.e. { id: 50f3... } in this case)
+        const fileId = req.params.id;
+        if (!fileId) {
+            return res.status(404).json({ error: 'Not found' });
+        }
+
+        const file = await dbClient.getFileById(fileId, user._id.toString());
+        if (!file) {
+            return res.status(404).json({ error: 'Not found' });
+        }
+
+        return res.status(200).json(file);
+    }
+
+    static async getIndex(req, res) {
+        console.log('hello test');
+        const token = req.headers['x-token'];
+        const user = await dbClient.authenticateUser(token);
+        if (!user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // save parent id as 0 if null or undefined
+        const rawParentId = req.query.parentId || '0';
+
+        // if parent id is '0' (string), set it to 0
+        // else, convert base64 parent id (still currently a string) to ObjectId
+        const parentId = rawParentId === '0' ? 0 : dbClient.getObjectId(rawParentId);
+
+        // max ensures pages will not be negative
+        // page set to 0 if value from request query not available
+        const page = Math.max(0, parseInt(req.query.page) || 0);
+
+        const files = await dbClient.db.collection('files')
+        .aggregate([
+            {
+                $match: {
+                    userId: user._id,
+                    parentId: parentId || 0
+                }
+            },
+            { $skip: page * 20 },
+            { $limit: 20 },
+        ])
+        .toArray();
+
+        return res.status(200).json(files);
     }
 }
