@@ -155,4 +155,39 @@ export default class FilesController {
 
         return res.status(200).json(file);
     }
+
+    static async getIndex(req, res) {
+        console.log('hello test');
+        const token = req.headers['x-token'];
+        const user = await dbClient.authenticateUser(token);
+        if (!user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // save parent id as 0 if null or undefined
+        const rawParentId = req.query.parentId || '0';
+
+        // if parent id is '0' (string), set it to 0
+        // else, convert base64 parent id (still currently a string) to ObjectId
+        const parentId = rawParentId === '0' ? 0 : dbClient.getObjectId(rawParentId);
+
+        // max ensures pages will not be negative
+        // page set to 0 if value from request query not available
+        const page = Math.max(0, parseInt(req.query.page) || 0);
+
+        const files = await dbClient.db.collection('files')
+        .aggregate([
+            {
+                $match: {
+                    userId: user._id,
+                    parentId: parentId || 0
+                }
+            },
+            { $skip: page * 20 },
+            { $limit: 20 },
+        ])
+        .toArray();
+
+        return res.status(200).json(files);
+    }
 }

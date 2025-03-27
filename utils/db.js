@@ -57,7 +57,7 @@ class DBClient {
         try {
             return await redisClient.get(`auth_${token}`);
         } catch (error) {
-            console.error(`Error validating Redis token: ${error}`);
+            console.error(`Error validating token from Redis: ${error}`);
             return 0;
         }
     }
@@ -86,7 +86,7 @@ class DBClient {
         }
     }
 
-    async getObjectId(id) {
+    getObjectId(id) {
         if (!this.isAlive()) return 0;
         try {
             return new ObjectId(id);
