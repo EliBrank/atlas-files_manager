@@ -11,7 +11,8 @@
     "start-worker": "nodemon --exec babel-node --presets @babel/preset-env ./worker.js",
     "dev": "nodemon --exec babel-node --presets @babel/preset-env",
     "test": "./node_modules/.bin/mocha --require @babel/register --exit",
-    "start-mongo": "mongod --fork --logpath /var/log/mongod.log"
+    "start-mongo": "mongod --fork --logpath /var/log/mongod.log",
+    "start-redis": "redis-server &"
   },
   "author": "",
   "license": "ISC",
