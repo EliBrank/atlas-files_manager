@@ -2,6 +2,7 @@ import dbClient from "../utils/db.js";
 import { v4 as uuidv4 } from "uuid";
 import fs from 'fs';
 import path from 'path';
+import mime from 'mime-types';
 
 const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager'
 
@@ -110,7 +111,7 @@ export default class FilesController {
                 return res.status(500).json({ error: 'Error saving file' });
             }
         } else {
-            let localPath = null;
+            localPath = null;
         }
 
         const newFile = {
@@ -235,5 +236,39 @@ export default class FilesController {
 
     static async putUnpublish(req, res) {
         return FilesController.updatePublishStatus(req, res, false);
+    }
+
+    static async getFile(req, res) {
+        const token = req.headers['x-token'];
+        const user = await dbClient.authenticateUser(token);
+        if (!user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // req.params gets route parameters from request (i.e. { id: 50f3... } in this case)
+        const fileId = req.params.id;
+        if (!fileId) {
+            return res.status(404).json({ error: 'Not found' });
+        }
+
+        const file = await dbClient.getFileById(fileId, user._id.toString());
+        if (!file || !file.isPublic) {
+            return res.status(404).json({ error: 'Not found' });
+        }
+
+        if (file.type === 'folder') {
+            return res.status(400).json({ error: 'A folder doesn\'t have content' })
+        }
+
+        if (!file.localPath || !fs.existsSync(file.localPath)) {
+            return res.status(404).json({ error: 'Not found' });
+        }
+
+        const mimeType = mime.lookup(file.name);
+
+        res.setHeader('Content-Type', mimeType);
+        // file.localPath will be absolute path, so needs root: '/' specification
+        // path.resolve also resolves to absolute path, but is less secure
+        res.sendFile(file.localPath, { root: '/' });
     }
 }
